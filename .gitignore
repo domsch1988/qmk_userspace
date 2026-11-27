@@ -5,6 +5,9 @@
 .DS_Store
 ._*
 
+# Private strings -- belong outside the repo, see SECRETS_DIR in rules.mk
+secrets.h
+
 # Firmware files
 *.hex
 *.bin

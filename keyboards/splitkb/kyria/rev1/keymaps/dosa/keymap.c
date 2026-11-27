@@ -2,17 +2,20 @@
 #include "keymap_german.h"
 #include "sendstring_german.h"
 
+// Passwords etc. live outside the repo, see SECRETS_DIR in rules.mk.
+#if __has_include("secrets.h")
+#    include "secrets.h"
+#endif
+
 enum layers {
     QWE = 0,
     SYM,
     NUM,
     NAV,
-    FUN,
-    NUL
+    FUN
 };
 
 #define ME_SPC MEH_T(KC_SPC)
-#define LE_SFT SFT_T(QK_LEAD)
 #define LA_FUN LT(FUN, KC_ENT)
 #define LA_SYM LT(SYM, KC_BSPC)
 #define LA_NUM LT(NUM, KC_TAB)
@@ -20,7 +23,7 @@ enum layers {
 #define WI_CPY C(KC_C)
 #define WI_PST C(KC_V)
 #define WI_CUT C(KC_X)
-#define WI_UND C(KC_Z)
+#define WI_UND C(DE_Z)   // host layout is German: KC_Z would be Ctrl+Y (redo)
 #define AP_1 G(KC_1)
 #define AP_2 G(KC_2)
 #define AP_3 G(KC_3)
@@ -33,46 +36,52 @@ enum layers {
 #define AP_10 G(KC_0)
 #define MO_Z CTL_T(KC_Z)
 #define MO_X ALT_T(KC_X)
-#define MO_CTL CTL_T(DE_UNDS)
+// Mod-taps can only tap basic keycodes (MT() drops the Shift from DE_UNDS),
+// so the underscore tap is sent manually in process_record_user.
+#define MO_CTL CTL_T(DE_MINS)
 #define MO_ALT ALT_T(DE_DOT)
 #define MO_HYP ALL_T(DE_COMM)
-#define MO_CTLA CTL_T(KC_Y)
-#define MO_ALTA ALT_T(KC_B)
-#define MO_HYPA ALL_T(KC_W)
 #define BR_TABL RCS(KC_TAB)
 #define BR_TABR C(KC_TAB)
 
 enum custom_keycodes {
-    SH_LEAD = SAFE_RANGE, //normal shift, oneshot layer 2 on tap
-    //other macros,
+    SH_LEAD = SAFE_RANGE, // Shift on hold, Leader on tap
 };
- 
- 
-bool key_pressed = false;    //variable used to check if a key is pressed while SH_LAY2 is held
-uint16_t SH_LEAD_TIMER = 0;  //declare a timer variable to track hold time for SH_LAY2
- 
-bool process_record_user(uint16_t keycode, keyrecord_t *record) {   
-    if (record->event.pressed)
-        key_pressed = true;  //if any key is pressed, set key_pressed to true
-    
+
+static bool     key_pressed   = false; // another key was pressed while SH_LEAD was held
+static uint16_t sh_lead_timer = 0;     // when SH_LEAD was pressed
+
+bool process_record_user(uint16_t keycode, keyrecord_t *record) {
+    if (record->event.pressed) {
+        key_pressed = true;
+    }
+
     switch (keycode) {
         case SH_LEAD:
-            if (record->event.pressed) {       //when SH_LAY2 is pressed
-                register_code(KC_LSFT);        //  press left shift
-                key_pressed = false;           //  set key_pressed to false  
-                SH_LEAD_TIMER = timer_read();  //  mark the time SH_LAY2 was pressed
-            } else {                           //when SH_LAY2 is released
-                unregister_code(KC_LSFT);      //  release left shift
-                if (key_pressed) break;  //  if another key was pressed while shift was held, exit and do not use one shot layer
-                
-                if (timer_elapsed(SH_LEAD_TIMER) < TAPPING_TERM) {  //if SH_LAY2 was held for less than TAPPING_TERM (default 200ms)
-                    leader_start();     //  necessary for oneshots in macros.  don't touch this line
+            if (record->event.pressed) {
+                register_code(KC_LSFT);
+                key_pressed   = false;
+                sh_lead_timer = timer_read();
+            } else {
+                unregister_code(KC_LSFT);
+                // Start Leader only on a quick tap with no other key pressed in between.
+                if (!key_pressed && timer_elapsed(sh_lead_timer) < TAPPING_TERM) {
+                    leader_start();
                 }
+            }
+            break;
+
+        case MO_CTL:
+            // Tap sends "_". Skipped during a Leader sequence so the key still
+            // reaches the leader code (which runs after this function).
+            if (record->tap.count && record->event.pressed && !leader_sequence_active()) {
+                tap_code16(DE_UNDS);
+                return false;
             }
             break;
     }
     return true;
-};
+}
 
 const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     [QWE] = LAYOUT(
@@ -84,7 +93,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     [SYM] = LAYOUT(
      _______ , DE_LABK, DE_RABK, DE_LCBR, DE_RCBR, DE_DLR ,                                     DE_ASTR, DE_UDIA, DE_TILD, DE_ODIA, DE_EURO, _______,
      _______ , DE_ADIA,  DE_SS , DE_LPRN, DE_RPRN, DE_PERC,                                     DE_PIPE, DE_QUES, DE_EXLM, DE_EQL , DE_AT  , _______,
-     _______ , DE_BLSH, DE_SLSH, DE_LBRC, DE_RBRC, DE_AMPR, _______, _______, _______, _______, DE_HASH, DE_DQUO, DE_QUOT, DE_CIRC, DE_GRV , _______,
+     _______ , DE_BSLS, DE_SLSH, DE_LBRC, DE_RBRC, DE_AMPR, _______, _______, _______, _______, DE_HASH, DE_DQUO, DE_QUOT, DE_CIRC, DE_GRV , _______,
                                  _______, _______, _______, _______, _______, _______, _______, _______, _______, _______
     ),
     [NUM] = LAYOUT(
@@ -105,37 +114,26 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
       _______, _______, _______, _______, _______, _______,_______, _______, _______, _______, KC_HOME, KC_PGDN, KC_PGUP, KC_END ,  _______, _______,
                                  _______, _______, _______,_______, _______, _______, _______, _______, _______, _______
     ),
-    [NUL] = LAYOUT(
-      _______, _______, _______, _______, _______, _______,                                    _______, _______, _______, _______,  _______, _______,
-      _______, _______, _______, _______, _______, _______,                                    _______, _______, _______, _______,  _______, _______,
-      _______, _______, _______, _______, _______, _______,_______, _______, _______, _______, _______, _______, _______, _______,  _______, _______,
-                                 _______, _______, _______,_______, _______, _______, _______, _______, _______, _______
-    ),
-
 };
 
-void leader_start_user(void) {
-    // Do something when the leader key is pressed
-}
-
 void leader_end_user(void) {
-    if (leader_sequence_two_keys(KC_F, KC_MINS)) {
-        // Leader, f => Types the below string
+    if (leader_sequence_two_keys(KC_F, DE_MINS)) {
+        // Leader, f, - => Meh+Y (global hotkey; KC_Z is "y" on the German host)
         tap_code16(MEH(KC_Z));
+#ifdef SECRET_TPE
     } else if (leader_sequence_three_keys(KC_T, KC_P, KC_E)) {
-        // Leader, d, d => Ctrl+A, Ctrl+C
-        SEND_STRING("REDACTED");
+        SEND_STRING(SECRET_TPE);
+#endif
+#ifdef SECRET_TPF
     } else if (leader_sequence_three_keys(KC_T, KC_P, KC_F)) {
-        // Leader, d, d => Ctrl+A, Ctrl+C
-        SEND_STRING("REDACTED");
+        SEND_STRING(SECRET_TPF);
+#endif
     } else if (leader_sequence_three_keys(KC_T, KC_E, KC_S)) {
-        // Leader, d, d => Ctrl+A, Ctrl+C
+        // Leader, t, e, s/g/f => email addresses
         SEND_STRING("dominik@schlack.net");
     } else if (leader_sequence_three_keys(KC_T, KC_E, KC_G)) {
-        // Leader, d, d => Ctrl+A, Ctrl+C
         SEND_STRING("dominik.schlack@gmail.com");
     } else if (leader_sequence_three_keys(KC_T, KC_E, KC_F)) {
-        // Leader, d, d => Ctrl+A, Ctrl+C
         SEND_STRING("dominik.schlack@frequentis.com");
     }
 }
