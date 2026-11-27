@@ -121,19 +121,19 @@ void leader_end_user(void) {
         // Leader, f, - => Meh+Y (global hotkey; KC_Z is "y" on the German host)
         tap_code16(MEH(KC_Z));
 #ifdef SECRET_TPE
-    } else if (leader_sequence_three_keys(KC_T, KC_P, KC_E)) {
+    } else if (leader_sequence_one_key(KC_E)) {
         SEND_STRING(SECRET_TPE);
 #endif
 #ifdef SECRET_TPF
-    } else if (leader_sequence_three_keys(KC_T, KC_P, KC_F)) {
+    } else if (leader_sequence_one_key(KC_F)) {
         SEND_STRING(SECRET_TPF);
 #endif
-    } else if (leader_sequence_three_keys(KC_T, KC_E, KC_S)) {
+    } else if (leader_sequence_one_key(KC_S)) {
         // Leader, t, e, s/g/f => email addresses
         SEND_STRING("dominik@schlack.net");
-    } else if (leader_sequence_three_keys(KC_T, KC_E, KC_G)) {
+    } else if (leader_sequence_one_key(KC_G)) {
         SEND_STRING("dominik.schlack@gmail.com");
-    } else if (leader_sequence_three_keys(KC_T, KC_E, KC_F)) {
+    } else if (leader_sequence_one_key(KC_R)) {
         SEND_STRING("dominik.schlack@frequentis.com");
     }
 }
